@@ -1,0 +1,13 @@
+#!/usr/bin/env ruby
+
+require "webrick"
+
+document_root = ARGV[0] || "."
+
+server = WEBrick::HTTPServer.new(Port: 8000, DocumentRoot: document_root)
+Dir["#{document_root}/cgi-bin/*"].each do |file|
+  server.mount("/cgi-bin/#{File.basename(file)}", WEBrick::HTTPServlet::CGIHandler, File.absolute_path(file))
+end
+
+trap("INT") { server.shutdown }
+server.start
