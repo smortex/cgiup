@@ -1,0 +1,54 @@
+#!/usr/bin/env ruby
+
+require "optparse"
+require "webrick"
+
+options = {
+  DocumentRoot: ".",
+  CGIPath: "./cgi-bin",
+  BindAddress: "127.0.0.1",
+  Port: 8000,
+}
+
+OptionParser.new do |opts|
+  opts.banner = "Usage: cgirun [options]"
+
+  opts.on("-d", "--document-root PATH", "Document root") do |path|
+    options[:DocumentRoot] = path
+  end
+
+  opts.on("-c", "--cgi-bin PATH", "CGI bin path (will be accessible as /cgi-bin)") do |path|
+    options[:CGIPath] = path
+  end
+
+  opts.on("-b", "--bind ADDRESS", "Address to bind to") do |address|
+    options[:BindAddress] = address
+  end
+
+  opts.on("-p", "--port PORT", Integer, "Port to listen on") do |port|
+    options[:Port] = port
+  end
+
+  opts.on("-h", "--help", "Prints this help") do
+    puts opts
+    exit
+  end
+end.parse!
+
+if !File.exist?(options[:DocumentRoot])
+  puts "Document root does not exist: #{options[:DocumentRoot]}"
+  exit 1
+end
+
+if !File.exist?(options[:CGIPath])
+  warn "CGI path does not exist: #{options[:CGIPath]}"
+end
+
+server = WEBrick::HTTPServer.new(BindAddress: options[:BindAddress], Port: options[:Port], DocumentRoot: options[:DocumentRoot])
+
+Dir["#{options[:CGIPath]}/*"].each do |file|
+  server.mount("/cgi-bin/#{File.basename(file)}", WEBrick::HTTPServlet::CGIHandler, File.absolute_path(file))
+end
+
+trap("INT") { server.shutdown }
+server.start
